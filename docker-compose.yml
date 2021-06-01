@@ -1,0 +1,50 @@
+version: '3.7'
+
+volumes:
+  # MySQL Data
+  laravel-mysql-data:
+    driver: local
+
+services:
+  # MySQL (5.7)
+  db:
+    image: mysql:5.7
+    container_name: laravel-mysql
+    volumes:
+      - laravel-mysql-data:/var/lib/mysql
+    ports:
+      - 13306:3306
+    environment:
+      - MYSQL_DATABASE=laravel
+      - MYSQL_USER=laravel
+      - MYSQL_PASSWORD=laravel
+      - MYSQL_ROOT_PASSWORD=laravel
+
+  # PHP (with Nginx)
+  app:
+    image: ambientum/php:7.3-nginx
+    container_name: laravel-app
+    volumes:
+      - .:/var/www/app
+      - ./nginx/99_xdebug.ini:/etc/php7/conf.d/99_xdebug.ini
+      - ./nginx/99_overrides.ini:/etc/php7/conf.d/99_overrides.ini
+      - ./nginx/vhost.conf:/etc/nginx/sites/laravel.conf
+    environment:
+      - XDEBUG_ENABLED=true
+      - DB_QUERY_LOG_ENABLED=true
+    ports:
+      - 8080:8080
+    links:
+      - db
+
+  # Laravel Queues
+  queue:
+    image: ambientum/php:7.3
+    container_name: laravel-queue
+    command: php artisan queue:listen
+    volumes:
+      - .:/var/www/app
+    environment:
+      - DB_QUERY_LOG_ENABLED=false
+    links:
+      - db
